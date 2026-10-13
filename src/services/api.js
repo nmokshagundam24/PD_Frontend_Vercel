@@ -70,9 +70,15 @@ function writeString(view, offset, str) {
 
 // ─── API Functions ─────────────────────────────────────────────────
 
+
 export async function startSession() {
   console.log("[API] POST /start-session");
-  const res = await fetch(`${API_BASE}/start-session`, { method: "POST" });
+  const res = await fetch(`${API_BASE}/start-session`, {
+    method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": "true",
+    },
+  });
   if (!res.ok) throw new Error("Failed to start session");
   return res.json();
 }
@@ -109,6 +115,9 @@ export async function processTask(participantId, taskId, taskName, audioBlob, la
   console.log(`[API] POST /process-task — participant=${participantId}`);
   const res = await fetch(`${API_BASE}/process-task`, {
     method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": "true",
+    },
     body: formData,
   });
 
