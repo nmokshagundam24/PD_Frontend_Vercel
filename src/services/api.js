@@ -122,9 +122,21 @@ export async function processTask(participantId, taskId, taskName, audioBlob, la
   return data;
 }
 
+// export async function getFinalResult(participantId) {
+//   console.log(`[API] GET /final-result/${participantId}`);
+//   const res = await fetch(`${API_BASE}/final-result/${participantId}`);
+//   if (!res.ok) throw new Error("Failed to fetch results");
+//   return res.json();
+// }
+
+
 export async function getFinalResult(participantId) {
   console.log(`[API] GET /final-result/${participantId}`);
-  const res = await fetch(`${API_BASE}/final-result/${participantId}`);
+  const res = await fetch(`${API_BASE}/final-result/${participantId}`, {
+    headers: {
+      "ngrok-skip-browser-warning": "true",
+    },
+  });
   if (!res.ok) throw new Error("Failed to fetch results");
   return res.json();
 }
