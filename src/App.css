@@ -1840,7 +1840,7 @@ body::after {
   font-size: 2rem;
   font-weight: 800;
   margin-bottom: 1.5rem;
-  background: linear-gradient(135deg, #f0f6ff, var(--teal));
+  background: linear-gradient(135deg, #000000, var(--teal));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
