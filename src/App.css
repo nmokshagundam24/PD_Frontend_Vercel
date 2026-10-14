@@ -1840,10 +1840,11 @@ body::after {
   font-size: 2rem;
   font-weight: 800;
   margin-bottom: 1.5rem;
-  background: linear-gradient(135deg, #000000, var(--teal));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000 !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: #000000 !important;
+  background-clip: initial !important;
 }
 
 .detection-result { margin-bottom: 2rem; }
@@ -2110,6 +2111,6 @@ body::after {
   .microphone-icon     { width: 32px; height: 32px; }
 }
 
-.results-title {
+.result-card h3 {
   color: #000000 !important;
 }
