@@ -1,4 +1,3 @@
-```jsx
 function ResultsScreen({ result, language, onRestart }) {
   const isTelugu = language === 'telugu'
 
@@ -251,4 +250,3 @@ function ResultsScreen({ result, language, onRestart }) {
 }
 
 export default ResultsScreen
-```
