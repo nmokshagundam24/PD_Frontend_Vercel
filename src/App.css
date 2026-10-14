@@ -2109,3 +2109,7 @@ body::after {
   .pulse-ring          { width: 80px; height: 80px; }
   .microphone-icon     { width: 32px; height: 32px; }
 }
+
+.results-title {
+  color: #000000 !important;
+}
