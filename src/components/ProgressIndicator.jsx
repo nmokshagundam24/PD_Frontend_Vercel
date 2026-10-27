@@ -1,4 +1,4 @@
-function ProgressIndicator({ currentStage, totalStages, percentage }) {
+function ProgressIndicator({ currentStage, totalStages, percentage, language }) {
   const radius = 36
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (percentage / 100) * circumference
@@ -23,7 +23,7 @@ function ProgressIndicator({ currentStage, totalStages, percentage }) {
       </svg>
       <div className="progress-text">
         <div className="progress-stage">{currentStage}/{totalStages}</div>
-        <div className="progress-label">Tasks</div>
+        <div className="progress-label">{language === 'telugu' ? 'టాస్క్‌లు' : 'Tasks'}</div>
       </div>
     </div>
   )

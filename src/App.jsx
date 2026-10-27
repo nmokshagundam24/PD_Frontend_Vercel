@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import './App.css'
 import WelcomeScreen from './components/WelcomeScreen'
 import LanguageSelect from './components/LanguageSelect'
@@ -8,6 +8,7 @@ import TaskResultScreen from './components/TaskResultScreen'
 import ResultsScreen from './components/ResultsScreen'
 import ProgressIndicator from './components/ProgressIndicator'
 import { startSession, processTask, getFinalResult } from './services/api'
+import { loadAssessmentState, saveAssessmentState, clearAssessmentState } from './services/storage'
 
 // Shuffle array function
 const shuffleArray = (array) => {
@@ -22,7 +23,7 @@ const shuffleArray = (array) => {
 const TASKS_TELUGU = [
   {
     id: 'vowels',
-    title: 'Vowel Pronunciation',
+    title: 'అచ్చుల ఉచ్చారణ',
     instructions: 'ప్రతి స్వరాన్ని అది హైలైట్ అయినప్పుడు స్పష్టంగా ఉచ్చరించండి. ప్రతి శబ్దాన్ని 5 సెకండ్ల పాటు నిలిపి ఉంచండి.',
     type: 'sequential-single-with-gap',
     items: ['ఆ', 'ఈ', 'ఐ', 'ఓ', 'ఉ'],
@@ -31,7 +32,7 @@ const TASKS_TELUGU = [
   },
   {
     id: 'numbers',
-    title: 'Number Sequence',
+    title: 'సంఖ్యల క్రమం',
     instructions: 'ఒకటి నుండి పది వరకు తెలుగులో లెక్కించండి. స్పష్టంగా మరియు సహజంగా మాట్లాడండి.',
     type: 'sequential-single-with-gap',
     items: ['ఒకటి', 'రెండు', 'మూడు', 'నాలుగు', 'ఐదు', 'ఆరు', 'ఏడు', 'ఎనిమిది', 'తొమ్మిది', 'పది'],
@@ -40,7 +41,7 @@ const TASKS_TELUGU = [
   },
   {
     id: 'ddk',
-    title: 'Syllable Patterns',
+    title: 'అక్షర నమూనాలు',
     instructions: 'స్క్రీన్‌పై కనిపించే ప్రతి అక్షర నమూనాను 6 సార్లు స్పష్టంగా పునరావృతం చేయండి.',
     type: 'sequential-single',
     items: ['పటక', 'పకట', 'కపట', 'కటప', 'టపక', 'టకప'],
@@ -49,7 +50,7 @@ const TASKS_TELUGU = [
   },
   {
     id: 'words',
-    title: 'Word Reading',
+    title: 'పదాల పఠనం',
     instructions: 'ప్రతి తెలుగు పదాన్ని స్క్రీన్‌పై కనిపించినప్పుడు బిగ్గరగా చదవండి.',
     type: 'sequential-single',
     items: [
@@ -66,7 +67,7 @@ const TASKS_TELUGU = [
   },
   {
     id: 'sentences',
-    title: 'Paragraph Reading',
+    title: 'పేరా పఠనం',
     instructions: 'కింది తెలుగు పేరాను సహజమైన వ్యక్తీకరణ మరియు వేగంతో బిగ్గరగా చదవండి. ఒక నిమిషం ప్రసంగం ఇవ్వండి.',
     type: 'manual',
     duration: 60000,
@@ -75,7 +76,7 @@ const TASKS_TELUGU = [
   },
   {
     id: 'spontaneous',
-    title: 'Spontaneous Speech',
+    title: 'స్వచ్ఛంద ప్రసంగం',
     instructions: 'కింది అంశాల గురించి మాట్లాడండి. ఒక నిమిషం ప్రసంగం ఇవ్వండి.',
     type: 'manual',
     duration: 60000,
@@ -173,26 +174,79 @@ const TASKS_ENGLISH = [
 ]
 
 function App() {
-  const [stage, setStage] = useState('welcome') // welcome, language, task, uploading, task-result, results, error
-  const [language, setLanguage] = useState(null)
-  const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
-  const [participantId, setParticipantId] = useState(null)
-  const [currentTaskResult, setCurrentTaskResult] = useState(null)
-  const [finalResult, setFinalResult] = useState(null)
+  const [initialLoaded] = useState(() => loadAssessmentState())
+  const [stage, setStage] = useState(() => initialLoaded?.stage || 'welcome')
+  const [language, setLanguage] = useState(() => initialLoaded?.language || null)
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(() => initialLoaded?.currentTaskIndex ?? 0)
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(() => initialLoaded?.currentPromptIndex ?? 0)
+  const [participantId, setParticipantId] = useState(() => initialLoaded?.participantId || null)
+  const [currentTaskResult, setCurrentTaskResult] = useState(() => initialLoaded?.currentTaskResult || null)
+  const [finalResult, setFinalResult] = useState(() => initialLoaded?.finalResult || null)
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState(null)
-  const taskResultsRef = useRef([])
+  const [shuffledTaskItems, setShuffledTaskItems] = useState(() => initialLoaded?.shuffledTaskItems || {})
+  const taskResultsRef = useRef(initialLoaded?.completedTaskResults || [])
 
   const TASKS = useMemo(() => {
     if (!language) return []
     const baseTasks = language === 'telugu' ? TASKS_TELUGU : TASKS_ENGLISH
     return baseTasks.map(task => {
       if (task.shuffle && task.items) {
+        const existing = shuffledTaskItems[task.id]
+        if (existing && Array.isArray(existing) && existing.length === task.items.length) {
+          return { ...task, items: existing }
+        }
         return { ...task, items: shuffleArray(task.items) }
       }
       return task
     })
-  }, [language])
+  }, [language, shuffledTaskItems])
+
+  // Sync state changes to sessionStorage
+  useEffect(() => {
+    if (participantId && stage !== 'welcome') {
+      saveAssessmentState({
+        participantId,
+        language,
+        stage,
+        currentTaskIndex,
+        currentPromptIndex,
+        currentTaskResult,
+        completedTaskResults: taskResultsRef.current,
+        finalResult,
+        shuffledTaskItems,
+      })
+    }
+  }, [participantId, language, stage, currentTaskIndex, currentPromptIndex, currentTaskResult, finalResult, shuffledTaskItems])
+
+  // Verify backend session on mount if restored from storage
+  useEffect(() => {
+    if (initialLoaded?.participantId) {
+      let isCancelled = false
+      getFinalResult(initialLoaded.participantId)
+        .then(res => {
+          if (!isCancelled && res?.status === 'complete' && !finalResult) {
+            setFinalResult(res)
+          }
+        })
+        .catch(err => {
+          if (!isCancelled && err.message && err.message.toLowerCase().includes('not found')) {
+            console.warn('[App] Stored session not found on backend. Resetting.')
+            clearAssessmentState()
+            setParticipantId(null)
+            setLanguage(null)
+            setStage('welcome')
+            setCurrentTaskIndex(0)
+            setCurrentPromptIndex(0)
+            taskResultsRef.current = []
+            setError('Previous assessment session was not found on the server. Please start a new assessment.')
+          }
+        })
+      return () => {
+        isCancelled = true
+      }
+    }
+  }, [])
 
   const handleStart = useCallback(() => {
     setStage('language')
@@ -206,18 +260,46 @@ function App() {
       setParticipantId(participant_id)
       taskResultsRef.current = []
       setCurrentTaskIndex(0)
+      setCurrentPromptIndex(0)
+      setCurrentTaskResult(null)
+      setFinalResult(null)
+
+      // Initialize shuffled items for this session
+      const baseTasks = selectedLanguage === 'telugu' ? TASKS_TELUGU : TASKS_ENGLISH
+      const newShuffled = {}
+      baseTasks.forEach(task => {
+        if (task.shuffle && task.items) {
+          newShuffled[task.id] = shuffleArray(task.items)
+        }
+      })
+      setShuffledTaskItems(newShuffled)
+
       setStage('task')
+      saveAssessmentState({
+        participantId: participant_id,
+        language: selectedLanguage,
+        stage: 'task',
+        currentTaskIndex: 0,
+        currentPromptIndex: 0,
+        currentTaskResult: null,
+        completedTaskResults: [],
+        finalResult: null,
+        shuffledTaskItems: newShuffled,
+      })
     } catch (err) {
       setError(`Failed to start session: ${err.message}`)
       setStage('error')
     }
   }, [])
 
-  const handleTaskComplete = useCallback(async (taskId, audioBlob) => {
+  const [isRetryingCurrentTask, setIsRetryingCurrentTask] = useState(false)
+
+  const handleTaskComplete = useCallback(async (taskId, audioBlob, isRetryParam = false) => {
     setStage('uploading')
     const taskIndex = currentTaskIndex
     const task = TASKS[taskIndex]
     setUploadProgress(`Processing "${task.title}"... Analyzing speech patterns.`)
+    const isRetry = isRetryParam || isRetryingCurrentTask
 
     try {
       const result = await processTask(
@@ -225,10 +307,19 @@ function App() {
         taskIndex + 1,
         task.id,
         audioBlob,
-        language
+        language,
+        isRetry
       )
 
-      taskResultsRef.current.push(result)
+      // Replace existing task result if retrying, or append if new
+      const existingIdx = taskResultsRef.current.findIndex(r => r.task_id === result.task_id || r.task_name === result.task_name)
+      if (existingIdx >= 0) {
+        taskResultsRef.current[existingIdx] = result
+      } else {
+        taskResultsRef.current.push(result)
+      }
+
+      setIsRetryingCurrentTask(false)
       setCurrentTaskResult(result)
       // Always show per-task result first before moving on
       setStage('task-result')
@@ -236,22 +327,32 @@ function App() {
       setError(`Task processing failed: ${err.message}`)
       setStage('error')
     }
-  }, [currentTaskIndex, participantId, TASKS])
+  }, [currentTaskIndex, participantId, TASKS, language, isRetryingCurrentTask])
 
-  const handleRestart = useCallback(() => {
+  const handleRetakeAssessment = useCallback(() => {
+    clearAssessmentState()
     setStage('welcome')
     setLanguage(null)
     setParticipantId(null)
     setFinalResult(null)
     setCurrentTaskResult(null)
     setCurrentTaskIndex(0)
+    setCurrentPromptIndex(0)
+    setIsRetryingCurrentTask(false)
+    setShuffledTaskItems({})
     setError(null)
     taskResultsRef.current = []
   }, [])
 
-  const handleRetry = useCallback(() => {
+  const handleRetryTask = useCallback(() => {
+    setIsRetryingCurrentTask(true)
     setError(null)
+    setCurrentPromptIndex(0)
     setStage('task')
+  }, [])
+
+  const handlePromptChange = useCallback((promptIndex) => {
+    setCurrentPromptIndex(promptIndex)
   }, [])
 
   const handleContinueFromTaskResult = useCallback(async () => {
@@ -259,7 +360,9 @@ function App() {
     if (taskIndex < TASKS.length - 1) {
       // Move to the next task
       setCurrentTaskIndex(taskIndex + 1)
+      setCurrentPromptIndex(0)
       setCurrentTaskResult(null)
+      setIsRetryingCurrentTask(false)
       setStage('task')
     } else {
       // All tasks done — fetch final result
@@ -289,6 +392,7 @@ function App() {
           currentStage={Math.min(currentTaskIndex + 1, TASKS.length)}
           totalStages={TASKS.length}
           percentage={progressPercentage}
+          language={language}
         />
       )}
 
@@ -309,6 +413,11 @@ function App() {
             taskNumber={currentTaskIndex + 1}
             totalTasks={TASKS.length}
             language={language}
+            initialPromptIndex={currentPromptIndex}
+            onPromptChange={handlePromptChange}
+            onRetryTask={handleRetryTask}
+            onRetakeAssessment={handleRetakeAssessment}
+            isRetry={isRetryingCurrentTask}
           />
         )}
 
@@ -322,6 +431,8 @@ function App() {
             taskNumber={currentTaskIndex + 1}
             totalTasks={TASKS.length}
             onContinue={handleContinueFromTaskResult}
+            onRetryTask={handleRetryTask}
+            onRetakeAssessment={handleRetakeAssessment}
             language={language}
           />
         )}
@@ -330,7 +441,7 @@ function App() {
           <ResultsScreen
             result={finalResult}
             language={language}
-            onRestart={handleRestart}
+            onRestart={handleRetakeAssessment}
           />
         )}
 
@@ -346,11 +457,11 @@ function App() {
             <h2 className="results-title">Something went wrong</h2>
             <p className="disclaimer">{error}</p>
             <div className="results-actions">
-              <button className="action-button" onClick={handleRetry}>
+              <button className="action-button" onClick={handleRetryTask}>
                 Retry Current Task
               </button>
-              <button className="action-button" onClick={handleRestart} style={{ opacity: 0.7 }}>
-                Start Over
+              <button className="action-button" onClick={handleRetakeAssessment} style={{ opacity: 0.7 }}>
+                Retake Assessment
               </button>
             </div>
           </div>

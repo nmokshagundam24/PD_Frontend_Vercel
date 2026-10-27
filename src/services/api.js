@@ -83,9 +83,9 @@ export async function startSession() {
   return res.json();
 }
 
-export async function processTask(participantId, taskId, taskName, audioBlob, language) {
+export async function processTask(participantId, taskId, taskName, audioBlob, language, isRetry = false) {
   console.log(
-    `[API] processTask — task=${taskName}, lang=${language}, blobType=${audioBlob.type}, size=${audioBlob.size}`
+    `[API] processTask — task=${taskName}, lang=${language}, blobType=${audioBlob.type}, size=${audioBlob.size}, isRetry=${isRetry}`
   );
 
   // Convert browser audio (webm/ogg) → WAV so the backend always gets PCM
@@ -102,6 +102,7 @@ export async function processTask(participantId, taskId, taskName, audioBlob, la
   formData.append("participant_id", participantId);
   formData.append("task_id", taskId.toString());
   formData.append("task_name", taskName);
+  formData.append("retry", isRetry ? "true" : "false");
 
   // Send the selected language to the backend, with a fallback just in case
   if (language) {
