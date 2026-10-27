@@ -344,7 +344,15 @@ function TaskScreen({
         ) ? (
           <div className="single-word-display">
             {phase === 'recording' && !showGap && task.items[currentItemIndex] && (
-              <span className="current-word">{task.items[currentItemIndex]}</span>
+              <span className={`current-word ${
+                task.items[currentItemIndex].length > 12
+                  ? 'word-long'
+                  : task.items[currentItemIndex].length > 7
+                  ? 'word-medium'
+                  : ''
+              }`}>
+                {task.items[currentItemIndex]}
+              </span>
             )}
             {phase === 'recording' && showGap && (
               <div className="gap-indicator">
