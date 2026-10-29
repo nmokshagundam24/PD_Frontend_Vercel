@@ -17,9 +17,10 @@ function validateState(state) {
     return null;
   }
 
-  // If stage was 'uploading' during refresh, restore to 'task' so user can retry safely
+  // If stage was 'uploading' or 'task-result' during refresh, restore to 'task'
+  // so the user retries that task fresh (as required by the accidental refresh rule)
   let stage = state.stage;
-  if (stage === 'uploading') {
+  if (stage === 'uploading' || stage === 'task-result') {
     stage = 'task';
   }
 
@@ -31,9 +32,15 @@ function validateState(state) {
     ? state.language
     : null;
 
-  const completedTaskResults = Array.isArray(state.completedTaskResults)
+  const rawCompleted = Array.isArray(state.completedTaskResults)
     ? state.completedTaskResults
     : [];
+
+  // When stage is 'task', discard any previous score for this active task
+  const activeTaskId = currentTaskIndex + 1;
+  const completedTaskResults = (stage === 'task')
+    ? rawCompleted.filter(r => r.task_id !== activeTaskId)
+    : rawCompleted;
 
   // When restoring to a task screen, restart that same task from its beginning (prompt 0)
   const currentPromptIndex = (stage === 'task')
@@ -47,7 +54,7 @@ function validateState(state) {
     stage,
     currentTaskIndex,
     currentPromptIndex,
-    currentTaskResult: state.currentTaskResult || null,
+    currentTaskResult: (stage === 'task') ? null : (state.currentTaskResult || null),
     completedTaskResults,
     finalResult: state.finalResult || null,
     shuffledTaskItems: state.shuffledTaskItems || {},

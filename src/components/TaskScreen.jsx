@@ -100,7 +100,8 @@ function TaskScreen({
     setShowGap(false)
     setUploadedFileName(null)
     setPhase('idle')
-  }, [cleanupAudioStream])
+    if (onRetryTask) onRetryTask()
+  }, [cleanupAudioStream, onRetryTask])
 
   // Retry entire current task from beginning
   const handleRetryTaskClick = useCallback(() => {

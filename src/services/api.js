@@ -150,3 +150,53 @@ export async function getFinalResult(participantId) {
   if (!res.ok) throw new Error("Failed to fetch results");
   return res.json();
 }
+
+export async function discardTask(participantId, taskId) {
+  try {
+    console.log(`[API] POST /discard-task — participant=${participantId}, task=${taskId}`);
+    const formData = new FormData();
+    formData.append("participant_id", participantId);
+    formData.append("task_id", taskId.toString());
+
+    const res = await fetch(`${API_BASE}/discard-task`, {
+      method: "POST",
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      console.warn(`[API] discard-task returned status ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn("[API] discard-task request failed:", err);
+    return null;
+  }
+}
+
+export async function resetSession(participantId) {
+  try {
+    console.log(`[API] POST /reset-session — participant=${participantId}`);
+    const formData = new FormData();
+    formData.append("participant_id", participantId);
+
+    const res = await fetch(`${API_BASE}/reset-session`, {
+      method: "POST",
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      console.warn(`[API] reset-session returned status ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn("[API] reset-session request failed:", err);
+    return null;
+  }
+}
+

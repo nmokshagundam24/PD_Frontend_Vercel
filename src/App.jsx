@@ -7,7 +7,7 @@ import UploadingScreen from './components/UploadingScreen'
 import TaskResultScreen from './components/TaskResultScreen'
 import ResultsScreen from './components/ResultsScreen'
 import ProgressIndicator from './components/ProgressIndicator'
-import { startSession, processTask, getFinalResult } from './services/api'
+import { startSession, processTask, getFinalResult, discardTask, resetSession } from './services/api'
 import { loadAssessmentState, saveAssessmentState, clearAssessmentState } from './services/storage'
 
 // Shuffle array function
@@ -223,6 +223,14 @@ function App() {
   useEffect(() => {
     if (initialLoaded?.participantId) {
       let isCancelled = false
+
+      // If the user refreshed accidentally while on a task, discard any existing recording/score on server
+      if (initialLoaded.stage === 'task') {
+        const taskIdToDiscard = (initialLoaded.currentTaskIndex ?? 0) + 1
+        console.log(`[App] Accidental refresh detected during task ${taskIdToDiscard}. Discarding task on server.`)
+        discardTask(initialLoaded.participantId, taskIdToDiscard)
+      }
+
       getFinalResult(initialLoaded.participantId)
         .then(res => {
           if (!isCancelled && res?.status === 'complete' && !finalResult) {
@@ -330,6 +338,9 @@ function App() {
   }, [currentTaskIndex, participantId, TASKS, language, isRetryingCurrentTask])
 
   const handleRetakeAssessment = useCallback(() => {
+    if (participantId) {
+      resetSession(participantId)
+    }
     clearAssessmentState()
     setStage('welcome')
     setLanguage(null)
@@ -342,14 +353,20 @@ function App() {
     setShuffledTaskItems({})
     setError(null)
     taskResultsRef.current = []
-  }, [])
+  }, [participantId])
 
   const handleRetryTask = useCallback(() => {
+    const taskId = currentTaskIndex + 1
+    if (participantId) {
+      discardTask(participantId, taskId)
+    }
+    taskResultsRef.current = taskResultsRef.current.filter(r => r.task_id !== taskId)
+    setCurrentTaskResult(null)
     setIsRetryingCurrentTask(true)
     setError(null)
     setCurrentPromptIndex(0)
     setStage('task')
-  }, [])
+  }, [currentTaskIndex, participantId])
 
   const handlePromptChange = useCallback((promptIndex) => {
     setCurrentPromptIndex(promptIndex)
