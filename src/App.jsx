@@ -332,6 +332,18 @@ function App() {
       // Always show per-task result first before moving on
       setStage('task-result')
     } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('participant not found')) {
+        console.warn('[App] Participant not found on backend. Resetting session to welcome.')
+        clearAssessmentState()
+        setParticipantId(null)
+        setLanguage(null)
+        setStage('welcome')
+        setCurrentTaskIndex(0)
+        setCurrentPromptIndex(0)
+        taskResultsRef.current = []
+        setError('Your previous session was not found on the server. Please click Start Assessment to begin.')
+        return
+      }
       setError(`Task processing failed: ${err.message}`)
       setStage('error')
     }
