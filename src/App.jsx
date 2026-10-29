@@ -349,6 +349,7 @@ function App() {
     }
   }, [currentTaskIndex, participantId, TASKS, language, isRetryingCurrentTask])
 
+  // Discard in-progress / incomplete assessment (e.g. user gave up or wants to scrap attempt)
   const handleRetakeAssessment = useCallback(() => {
     if (participantId) {
       resetSession(participantId)
@@ -366,6 +367,22 @@ function App() {
     setError(null)
     taskResultsRef.current = []
   }, [participantId])
+
+  // Start brand new assessment after completing one (PRESERVES the finished assessment on server!)
+  const handleStartNewAssessment = useCallback(() => {
+    clearAssessmentState()
+    setStage('welcome')
+    setLanguage(null)
+    setParticipantId(null)
+    setFinalResult(null)
+    setCurrentTaskResult(null)
+    setCurrentTaskIndex(0)
+    setCurrentPromptIndex(0)
+    setIsRetryingCurrentTask(false)
+    setShuffledTaskItems({})
+    setError(null)
+    taskResultsRef.current = []
+  }, [])
 
   const handleRetryTask = useCallback(() => {
     const taskId = currentTaskIndex + 1
@@ -470,7 +487,7 @@ function App() {
           <ResultsScreen
             result={finalResult}
             language={language}
-            onRestart={handleRetakeAssessment}
+            onRestart={handleStartNewAssessment}
           />
         )}
 
